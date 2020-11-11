@@ -26,7 +26,8 @@ stages:
         Contents: '**'
         TargetFolder: '$(Build.ArtifactStagingDirectory)/scripts'
   
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+    - publish: $(Build.ArtifactStagingDirectory)
+      displayName: 'Publish contents of $(Build.ArtifactStagingDirectory) to artifact repo in Azure DevOps'
       artifact: drop
 
 - stage: Deploy
