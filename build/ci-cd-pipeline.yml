@@ -48,3 +48,4 @@ stages:
             displayName: "Deploy azure resources"
             inputs:
               filePath: '$(Agent.BuildDirectory)/drop/scripts/deploy.sh'
+              workingDirectory: '$(Agent.BuildDirectory)/drop/scripts'
