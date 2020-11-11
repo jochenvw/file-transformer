@@ -1,0 +1,7 @@
+# Resource name parts
+prefix=ms-csu-nl-jvw
+project=filetransformer
+postfix=dev
+
+
+az group create --name "${prefix}-${project}-${postfix}" --location westeurope

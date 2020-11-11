@@ -1,0 +1,1 @@
+bash -c "../infra/deploy-infra.azcli"
