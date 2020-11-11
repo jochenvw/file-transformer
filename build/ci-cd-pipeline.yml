@@ -47,4 +47,4 @@ stages:
           - task: Bash@3
             displayName: "Deploy azure resources"
             inputs:
-              filePath: 'scripts/deploy.sh'
+              filePath: '$(Agent.BuildDirectory)/scripts/deploy.sh'
