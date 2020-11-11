@@ -50,6 +50,7 @@ stages:
               targetType: 'inline'
               script: |
                 mv deploy-infra.azcli deploy-infra.sh
+                ls -als
               workingDirectory: '$(Agent.BuildDirectory)/drop/infra'
 
           - task: AzureCLI@2
@@ -58,4 +59,5 @@ stages:
               azureSubscription: '$(azure-subscription)'
               scriptType: 'pscore'
               scriptLocation: 'scriptPath'
-              scriptPath: '$(Agent.BuildDirectory)/drop/infra/deploy-infra.sh'
+              scriptPath: 'deploy-infra.sh'
+              workingDirectory: '$(Agent.BuildDirectory)/drop/infra'
