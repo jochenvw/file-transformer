@@ -22,7 +22,7 @@ stages:
     - task: CopyFiles@2
       displayName: "Copy deployment scripts to artifact staging folder"
       inputs:
-        SourceFolder: 'infra'
+        SourceFolder: 'scripts'
         Contents: '**'
         TargetFolder: '$(Build.ArtifactStagingDirectory)/scripts'
   
