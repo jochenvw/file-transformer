@@ -57,6 +57,6 @@ stages:
             displayName: "Deploy .azcli deployment script"
             inputs:
               azureSubscription: '$(azure-subscription)'
-              scriptType: 'bash/pscore'
+              scriptType: 'bash'
               scriptLocation: 'scriptPath'
               scriptPath: $(Agent.BuildDirectory)/drop/infra/deploy-infra.sh'
