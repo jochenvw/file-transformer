@@ -1,7 +1,9 @@
+# Deploys Azure Resources for file-transformation function-app
+
 # Resource name parts
 prefix=ms-csu-nl-jvw
 project=filetransformer
 postfix=dev
 
-
+# Deploy foundation: resource group
 az group create --name "${prefix}-${project}-${postfix}" --location westeurope
