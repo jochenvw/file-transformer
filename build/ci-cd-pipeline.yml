@@ -1,0 +1,49 @@
+trigger:
+- master
+
+stages:
+- stage: Build
+  displayName: Build and package solution binaries and other files
+
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: CopyFiles@2
+      displayName: "Copy deployment files to artifact staging folder"
+      inputs:
+        SourceFolder: 'infra'
+        Contents: '**'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/infra'
+
+    - task: CopyFiles@2
+      displayName: "Copy deployment scripts to artifact staging folder"
+      inputs:
+        SourceFolder: 'infra'
+        Contents: '**'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/scripts'
+  
+    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+      artifact: drop
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    environment: 'development'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:            
+          - task: Bash@3
+            displayName: "Deploy azure resources"
+            inputs:
+              filePath: 'scripts/deploy.sh'
