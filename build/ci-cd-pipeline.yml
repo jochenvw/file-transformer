@@ -44,8 +44,10 @@ stages:
       runOnce:
         deploy:
           steps:            
-          - task: Bash@3
-            displayName: "Deploy azure resources"
+          - task: AzureCLI@2
             inputs:
-              filePath: '$(Agent.BuildDirectory)/drop/scripts/deploy.sh'
+              azureSubscription: '$(azure-subscription)'
+              scriptType: 'pscore'
+              scriptLocation: '$(Agent.BuildDirectory)/drop/scripts/deploy.sh'
+              scriptPath: 'path'
               workingDirectory: '$(Agent.BuildDirectory)/drop/scripts'
