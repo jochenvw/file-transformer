@@ -48,6 +48,6 @@ stages:
             inputs:
               azureSubscription: '$(azure-subscription)'
               scriptType: 'pscore'
-              scriptLocation: '$(Agent.BuildDirectory)/drop/scripts/deploy.sh'
-              scriptPath: 'path'
+              scriptLocation: 'scriptPath'
+              scriptPath: '$(Agent.BuildDirectory)/drop/scripts/deploy.sh'
               workingDirectory: '$(Agent.BuildDirectory)/drop/scripts'
