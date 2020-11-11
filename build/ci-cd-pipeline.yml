@@ -9,7 +9,7 @@ stages:
   - job: Build
     displayName: Build
     pool:
-      vmImage: $(vmImageName)
+      vmImage: 'ubuntu-latest'
 
     steps:
     - task: CopyFiles@2
@@ -30,7 +30,7 @@ stages:
       artifact: drop
 
 - stage: Deploy
-  displayName: Deploy stage
+  displayName: Deploy to DEV
   dependsOn: Build
   condition: succeeded()
 
