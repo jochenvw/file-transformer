@@ -5,6 +5,10 @@ stages:
 - stage: Build
   displayName: Build and package solution binaries and other files
 
+# 
+# Build stage
+#
+
   jobs:
   - job: Build
     displayName: Build
@@ -49,6 +53,11 @@ stages:
       displayName: 'Publish contents of $(Build.ArtifactStagingDirectory) to artifact repo in Azure DevOps'
       artifact: drop
 
+
+# 
+# Deploy to DEV
+#
+
 - stage: DeployDEV
   displayName: Deploy to DEV
   dependsOn: Build
@@ -71,6 +80,9 @@ stages:
               scriptLocation: 'scriptPath'
               scriptPath: $(Agent.BuildDirectory)/drop/infra/deploy-infra-dev.sh
 
+# 
+# Deploy to PROD
+#
 
 - stage: DeployPROD
   displayName: Deploy to PROD

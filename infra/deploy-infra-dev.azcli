@@ -3,8 +3,46 @@
 
 # Resource name parts
 prefix=ms-csu-nl-jvw
-project=filetransformer
+project=filetrnsfrm
 postfix=dev
 
 # Deploy foundation: resource group
 az group create --name "${prefix}-${project}-${postfix}" --location westeurope
+
+# Virtual network with /16 - so lots of space and a /24 for the Azure Function
+az network vnet create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-vnet-${postfix}" --address-prefixes 10.0.0.0/16
+az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name TransformationAppSubnet --address-prefixes 10.0.1.0/24 --delegations Microsoft.Web/serverFarms
+
+# Instrumentation - Log Analytics and App Insights
+# NOTE the relative new feature to keep Log Analytics and App Insights logs in the same workspace
+az monitor log-analytics workspace create --resource-group "${prefix}-${project}-${postfix}" --workspace-name "${project}-logs-${postfix}"
+az monitor app-insights component create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --app "${project}-appinsights-${postfix}" --kind web --workspace "${project}-logs-${postfix}"
+
+
+# Function app - using Linux since we're doing .NET core anyway
+az appservice plan create --resource-group "${prefix}-${project}-${postfix}" --name "${project}-asp-${postfix}" --is-linux --sku P1V2 
+az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}funcstore${postfix}" --sku Standard_LRS
+az functionapp create --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --storage-account "${project}funcstore${postfix}" --plan "${project}-asp-${postfix}" --runtime dotnet --app-insights "${project}-appinsights-${postfix}" --functions-version 3 --assign-identity
+
+# Configure the Azure function to:
+# 1. Integrate with the virtual network: https://docs.microsoft.com/en-us/azure/azure-functions/functions-networking-options
+# 2. Ensure *ALL* outbound traffic flows into the VNET - because this is not the case by default: https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet#regional-vnet-integration
+az functionapp vnet-integration add --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --vnet "${project}-vnet-${postfix}" --subnet TransformationAppSubnet
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "WEBSITE_VNET_ROUTE_ALL=1"
+
+# Deploy the NAT gateway and configure the subnet to route its traffic through the NAT gateway
+az network public-ip create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-natpip-${postfix}" --allocation-method static --sku Standard
+az network nat gateway create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-natgw-${postfix}" --public-ip-addresses "${project}-natpip-${postfix}"
+az network vnet subnet update -n TransformationAppSubnet --vnet-name  "${project}-vnet-${postfix}" --resource-group "${prefix}-${project}-${postfix}" --nat-gateway "${project}-natgw-${postfix}" --address-prefixes "0.0.0.0/0" --debug
+
+
+# Source storage account for functionapp
+az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}appstore${postfix}" --sku Standard_RAGZRS --https-only true --min-tls-version TLS1_2 
+az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}reports${postfix}" --sku Standard_RAGZRS --https-only true --min-tls-version TLS1_2 
+
+
+# Send all logs and metrics to log analytics for all resources where possible
+az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-func-${postfix}" --resource-type Microsoft.Web/sites --logs '[{"category":"FunctionAppLogs","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
+az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-asp-${postfix}" --resource-type Microsoft.Web/serverfarms --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
+az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-vnet-${postfix}" --resource-type Microsoft.Network/virtualNetworks --logs '[{"category":"VMProtectionAlerts","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
+az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-vnet-${postfix}" --resource-type Microsoft.Network/virtualNetworks --logs '[{"category":"VMProtectionAlerts","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
