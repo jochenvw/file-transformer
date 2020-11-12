@@ -68,4 +68,35 @@ stages:
               azureSubscription: '$(azure-subscription)'
               scriptType: 'bash'
               scriptLocation: 'scriptPath'
-              scriptPath: $(Agent.BuildDirectory)/drop/infra/deploy-infra.sh
+              scriptPath: $(Agent.BuildDirectory)/drop/infra/deploy-infra-dev.sh
+
+
+- stage: Deploy
+  displayName: Deploy to PROD
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    environment: 'production'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:            
+          - task: Bash@3
+            displayName: "Rename .azcli file to .sh file so it can be executed in next step"
+            inputs:
+              targetType: 'inline'
+              script: |
+                mv deploy-infra.azcli deploy-infra.sh
+              workingDirectory: '$(Agent.BuildDirectory)/drop/infra'
+
+          - task: AzureCLI@2
+            displayName: "Deploy .azcli deployment script"
+            inputs:
+              azureSubscription: '$(azure-subscription)'
+              scriptType: 'bash'
+              scriptLocation: 'scriptPath'
+              scriptPath: $(Agent.BuildDirectory)/drop/infra/deploy-infra-prod.sh
