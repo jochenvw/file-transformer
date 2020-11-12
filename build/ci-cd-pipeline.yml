@@ -46,8 +46,8 @@ stages:
   condition: succeeded()
 
   jobs:
-  - deployment: Deploy
-    displayName: Deploy
+  - deployment: DeployDEV
+    displayName: Deploy to DEV
     environment: 'development'
 
     strategy:
@@ -71,7 +71,7 @@ stages:
               scriptPath: $(Agent.BuildDirectory)/drop/infra/deploy-infra-dev.sh
 
 
-- stage: Deploy
+- stage: DeployPROD
   displayName: Deploy to PROD
   dependsOn: Build
   condition: succeeded()
