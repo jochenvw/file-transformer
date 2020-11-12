@@ -19,13 +19,6 @@ stages:
         Contents: '**'
         TargetFolder: '$(Build.ArtifactStagingDirectory)/infra'
 
-    - task: CopyFiles@2
-      displayName: "Copy deployment scripts to artifact staging folder"
-      inputs:
-        SourceFolder: 'scripts'
-        Contents: '**'
-        TargetFolder: '$(Build.ArtifactStagingDirectory)/scripts'
-  
     - publish: $(Build.ArtifactStagingDirectory)
       displayName: 'Publish contents of $(Build.ArtifactStagingDirectory) to artifact repo in Azure DevOps'
       artifact: drop
