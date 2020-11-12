@@ -59,7 +59,8 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                mv deploy-infra.azcli deploy-infra.sh
+                mv deploy-infra-dev.azcli deploy-infra-dev.sh
+                mv deploy-infra-prod.azcli deploy-infra-prod.sh
               workingDirectory: '$(Agent.BuildDirectory)/drop/infra'
 
           - task: AzureCLI@2
