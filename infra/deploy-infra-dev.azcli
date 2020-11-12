@@ -10,8 +10,10 @@ postfix=dev
 az group create --name "${prefix}-${project}-${postfix}" --location westeurope
 
 # Virtual network with /16 - so lots of space and a /24 for the Azure Function
+# TODO - ensure errors are ignored on this line - created GitHub issue for this: https://github.com/Azure/azure-cli/issues/15892 
 az network vnet create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-vnet-${postfix}" --address-prefixes 10.0.0.0/16
 az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name TransformationAppSubnet --address-prefixes 10.0.1.0/24 --delegations Microsoft.Web/serverFarms
+az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name DataServicesSubnet --address-prefixes 10.0.2.0/24 --disable-private-endpoint-network-policies true
 
 # Instrumentation - Log Analytics and App Insights
 # NOTE the relative new feature to keep Log Analytics and App Insights logs in the same workspace
@@ -33,16 +35,36 @@ az functionapp config appsettings set --resource-group "${prefix}-${project}-${p
 # Deploy the NAT gateway and configure the subnet to route its traffic through the NAT gateway
 az network public-ip create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-natpip-${postfix}" --allocation-method static --sku Standard
 az network nat gateway create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-natgw-${postfix}" --public-ip-addresses "${project}-natpip-${postfix}"
-az network vnet subnet update -n TransformationAppSubnet --vnet-name  "${project}-vnet-${postfix}" --resource-group "${prefix}-${project}-${postfix}" --nat-gateway "${project}-natgw-${postfix}" --address-prefixes "0.0.0.0/0" --debug
+
+# TODO - Fix this line - GitHub issue: https://github.com/Azure/azure-cli/issues/15893
+az network vnet subnet update -n TransformationAppSubnet --vnet-name  "${project}-vnet-${postfix}" --resource-group "${prefix}-${project}-${postfix}" --nat-gateway "${project}-natgw-${postfix}" --address-prefixes "0.0.0.0/0"
 
 
 # Source storage account for functionapp
-az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}appstore${postfix}" --sku Standard_RAGZRS --https-only true --min-tls-version TLS1_2 
+az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}source${postfix}" --sku Standard_RAGZRS --https-only true --min-tls-version TLS1_2 
 az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}reports${postfix}" --sku Standard_RAGZRS --https-only true --min-tls-version TLS1_2 
 
+# Database server + DB
+az sql server create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-dbsrv-${postfix}" --admin-user sqldbadmin --admin-password !SuperSecretP@ssword --minimal-tls-version 1.2
+az sql db create --resource-group "${prefix}-${project}-${postfix}" --name "${project}-db-${postfix}" --server "${project}-dbsrv-${postfix}" --compute-model serverless -e GeneralPurpose -f Gen5 -c 1
 
 # Send all logs and metrics to log analytics for all resources where possible
 az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-func-${postfix}" --resource-type Microsoft.Web/sites --logs '[{"category":"FunctionAppLogs","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
 az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-asp-${postfix}" --resource-type Microsoft.Web/serverfarms --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
 az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-vnet-${postfix}" --resource-type Microsoft.Network/virtualNetworks --logs '[{"category":"VMProtectionAlerts","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
-az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-vnet-${postfix}" --resource-type Microsoft.Network/virtualNetworks --logs '[{"category":"VMProtectionAlerts","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
+
+##  WORK IN PROGRESS
+##  
+##  # Private endpoints for SQL and storage
+##  blobstoreid=$(az resource show --resource-group "${prefix}-${project}-${postfix}" --resource-type Microsoft.Storage/storageAccounts --name "${project}source${postfix}" --query id --output tsv)
+##  az network private-link-resource list --id ${blobstoreid}
+##  echo "Resource id for blob is ${blobstoreid}"
+##  az network private-endpoint create --name sourceStoreEndpoint --resource-group "${prefix}-${project}-${postfix}" --vnet-name  "${project}-vnet-${postfix}" --subnet DataServicesSubnet --private-connection-resource-id ${blobstoreid} --connection-name sourceStoreConnection
+##  
+##  sqlsrvid=$(az resource show --resource-group "${prefix}-${project}-${postfix}" --resource-type Microsoft.Sql/servers --name "${project}-dbsrv-${postfix}" --query id --output tsv)
+##  az network private-link-resource list --id ${sqlsrvid}
+##  echo "Resource id for SQL Server is ${sqlsrvid}"
+##  az network private-endpoint create --name dbEndpoint --resource-group "${prefix}-${project}-${postfix}" --vnet-name "${project}-vnet-${postfix}" --subnet DataServicesSubnet --private-connection-resource-id ${sqlsrvid} --connection-name dbConnection
+##  
+##  # Github issue: https://github.com/Azure/azure-cli/issues/15896
+##  az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-db-${postfix}" --resource-type Microsoft.Sql/servers/databases --logs '[{"category":"SQLInsights","Enabled":true},{"category":"AutomaticTuning","Enabled":true},{"category":"QueryStoreRuntimeStatistics","Enabled":true},{"category":"QueryStoreWaitStatistics","Enabled":true},{"category":"Errors","Enabled":true},{"category":"DatabaseWaitStatistics","Enabled":true},{"category":"Timeouts","Enabled":true},{"category":"Blocks","Enabled":true},{"category":"Deadlocks","Enabled":true}]' --metrics '[{"category":"Basic","Enabled":true},{"category":"InstanceAndAppAdvanced","Enabled":true},{"category":"WorkloadManagement","Enabled":true}]' --workspace "${project}-logs-${postfix}"
