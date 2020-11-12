@@ -40,13 +40,13 @@ stages:
       displayName: 'Publish contents of $(Build.ArtifactStagingDirectory) to artifact repo in Azure DevOps'
       artifact: drop
 
-- stage: Deploy
+- stage: DeployDEV
   displayName: Deploy to DEV
   dependsOn: Build
   condition: succeeded()
 
   jobs:
-  - deployment: DeployDEV
+  - deployment: Deploy
     displayName: Deploy to DEV
     environment: 'development'
 
