@@ -73,7 +73,7 @@ stages:
 
 - stage: DeployPROD
   displayName: Deploy to PROD
-  dependsOn: Build
+  dependsOn: DeployDEV
   condition: succeeded()
 
   jobs:
