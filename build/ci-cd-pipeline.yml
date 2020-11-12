@@ -36,6 +36,15 @@ stages:
         archiveFile: $(Build.ArtifactStagingDirectory)/app/file-transform-$(Build.BuildId).zip
         replaceExistingArchive: true
 
+    - task: Bash@3
+      displayName: "Rename .azcli file to .sh file so it can be by Azure CLI Step"
+      inputs:
+        targetType: 'inline'
+        script: |
+          cp deploy-infra-dev.azcli deploy-infra-dev.sh
+          cp deploy-infra-prod.azcli deploy-infra-prod.sh
+        workingDirectory: '$(Build.ArtifactStagingDirectory)/infra'        
+
     - publish: $(Build.ArtifactStagingDirectory)
       displayName: 'Publish contents of $(Build.ArtifactStagingDirectory) to artifact repo in Azure DevOps'
       artifact: drop
@@ -54,15 +63,6 @@ stages:
       runOnce:
         deploy:
           steps:            
-          - task: Bash@3
-            displayName: "Rename .azcli file to .sh file so it can be executed in next step"
-            inputs:
-              targetType: 'inline'
-              script: |
-                mv deploy-infra-dev.azcli deploy-infra-dev.sh
-                mv deploy-infra-prod.azcli deploy-infra-prod.sh
-              workingDirectory: '$(Agent.BuildDirectory)/drop/infra'
-
           - task: AzureCLI@2
             displayName: "Deploy .azcli deployment script"
             inputs:
@@ -86,14 +86,6 @@ stages:
       runOnce:
         deploy:
           steps:            
-          - task: Bash@3
-            displayName: "Rename .azcli file to .sh file so it can be executed in next step"
-            inputs:
-              targetType: 'inline'
-              script: |
-                mv deploy-infra.azcli deploy-infra.sh
-              workingDirectory: '$(Agent.BuildDirectory)/drop/infra'
-
           - task: AzureCLI@2
             displayName: "Deploy .azcli deployment script"
             inputs:
