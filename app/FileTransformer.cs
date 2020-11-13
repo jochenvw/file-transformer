@@ -29,9 +29,31 @@ namespace app
             var fileParams = new BlobFileParameters("test.csv", "https://filetrnsfrmdataindev.blob.core.windows.net/", "inbox");
 
             var lines = await context.CallActivityAsync<List<string>>("ReadInputFileFromBlob", fileParams);
+            var result = await context.CallActivityAsync<bool>("WriteLinesToDatabase", lines);
 
             lines.ForEach(line => outputs.Add(line));
             return outputs;
+        }
+
+        [FunctionName("WriteLinesToDatabase")]
+        public static bool WriteLinesToDatabase([ActivityTrigger] List<string> lines, ILogger log)
+        {
+            // https://docs.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-connect-msi
+            var connectionString = "Server=tcp:filetrnsfrm-dbsrv-dev.database.windows.net,1433;Database=filetrnsfrm-db-dev;";
+            var connection = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
+            connection.AccessToken = (new AzureServiceTokenProvider()).GetAccessTokenAsync("https://database.windows.net/").Result;
+            connection.Open();
+
+            foreach (var line in lines)
+            {
+                var sqlstatment = $"INSERT into [log] (Message) VALUES ( '{line}' ) ";
+                // YES - SUPER UNSAFE
+                var cmd = new Microsoft.Data.SqlClient.SqlCommand(sqlstatment, connection);
+                cmd.ExecuteNonQuery();
+                log.LogInformation($"Executed query: '{sqlstatment}'");
+            }
+            connection.Close();
+            return true;
         }
 
 
