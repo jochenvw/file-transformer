@@ -6,31 +6,64 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Services.AppAuthentication;
+using Azure.Storage.Blobs;
+using Azure.Identity;
+using System;
+using System.IO;
 
 namespace app
 {
-    public static class FileTransformer
+    public static partial class FileTransformer
     {
         [FunctionName("FileTransformer")]
         public static async Task<List<string>> RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
+            // NOTE: Make sure the function app MSI has "Storage Blob Data Reader" (or more) rights
+            //       on the storage container. Right now, the deployment script does *not* do this yet.
+            
             var outputs = new List<string>();
+            // @TODO:   get params from environment variables (appSettings). But this cannot be done from within the orchestration
+            //          function - because that violates deterministic principles: https://docs.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-code-constraints#using-deterministic-apis
+            var fileParams = new BlobFileParameters("test.csv", "https://filetrnsfrmdataindev.blob.core.windows.net/", "inbox");
 
-            // Replace "hello" with the name of your Durable Activity Function.
-            outputs.Add(await context.CallActivityAsync<string>("FileTransformer_Hello", "Tokyo"));
-            outputs.Add(await context.CallActivityAsync<string>("FileTransformer_Hello", "Seattle"));
-            outputs.Add(await context.CallActivityAsync<string>("FileTransformer_Hello", "London"));
+            var lines = await context.CallActivityAsync<List<string>>("ReadInputFileFromBlob", fileParams);
 
-            // returns ["Hello Tokyo!", "Hello Seattle!", "Hello London!"]
+            lines.ForEach(line => outputs.Add(line));
             return outputs;
         }
 
-        [FunctionName("FileTransformer_Hello")]
-        public static string SayHello([ActivityTrigger] string name, ILogger log)
+
+        [FunctionName("ReadInputFileFromBlob")]
+        public static List<string> ReadInputFileFromBlob([ActivityTrigger] BlobFileParameters fileParameters, ILogger log)
         {
-            log.LogInformation($"Saying hello to {name}.");
-            return $"Hello {name}!";
+            var azureServiceTokenProvider = new AzureServiceTokenProvider();
+            var accessToken = azureServiceTokenProvider.GetAccessTokenAsync("https://storage.azure.com").Result;
+            var containerEndpoint = string.Concat(fileParameters.BlobEndpoint, fileParameters.BlobContainer);
+            var containerClient = new BlobContainerClient(new Uri(containerEndpoint), new ManagedIdentityCredential(accessToken));
+
+            var blobClient = containerClient.GetBlobClient(fileParameters.FileName);
+            var result = new List<string>();
+            if (blobClient.Exists())
+            {
+                var response = blobClient.Download();
+                using (var streamReader = new StreamReader(response.Value.Content))
+                {
+                    while (!streamReader.EndOfStream)
+                    {
+                        var line = streamReader.ReadLine();
+                        result.Add(line);
+                    }
+                }
+            } else
+            {
+                var msg = $"Could not find file {fileParameters.FileName} in container {fileParameters.BlobContainer}";
+                log.LogError(msg);
+                throw new Exception(msg);
+            }
+            log.LogInformation($"BLOB file succesfully read - found {result.Count} lines");
+            return result;
         }
 
         [FunctionName("FileTransformer_HttpStart")]
