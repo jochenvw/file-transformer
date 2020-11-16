@@ -2,9 +2,13 @@
 {
     public class BlobFileParameters
     {
-        public string FileName { get; private set; }
-        public string BlobEndpoint { get; private set; }
-        public string BlobContainer { get; private set; }
+        public string FileName { get; set; }
+        public string BlobEndpoint { get; set; }
+        public string BlobContainer { get; set; }
+
+        public BlobFileParameters()
+        {
+        }
 
         public BlobFileParameters(string fileName, string blobEndpoint, string blobContainer)
         {

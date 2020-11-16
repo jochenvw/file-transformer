@@ -5,12 +5,16 @@ namespace app.DTOs
 {
     public class FormatBInstance
     {
-        public Guid Id { get; private set; }
-        public string Name { get; private set; }
-        public int First { get; private set; }
-        public int Second { get; private set; }
-        public int Third { get; private set; }
-        public int AdditionalField { get; private set; }
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public int First { get; set; }
+        public int Second { get; set; }
+        public int Third { get; set; }
+        public int AdditionalField { get; set; }
+
+        public FormatBInstance()
+        {
+        }
 
         public FormatBInstance(FormatAInstance input)
         {

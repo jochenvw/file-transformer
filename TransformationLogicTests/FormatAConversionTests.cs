@@ -38,5 +38,20 @@ namespace TransformationLogicTests
             var invalidInput = "test13;4803;1835;zzz"; // Note zzzs at the end - should be integers
             var actual = Transformations.ConvertCSVToFormatA(new InputFormat(invalidInput), logFactory.CreateLogger("mock"));
         }
+
+        [TestMethod]
+        public void ConversionPipelineTest()
+        {
+            // arrange
+            var logFactory = new NullLoggerFactory();
+            var input = new InputFormat("test13;4803;1835;1558");
+
+            // act
+            var formatA = Transformations.ConvertCSVToFormatA(input, logFactory.CreateLogger("mock"));
+            var formatB = Transformations.ConvertFormatAToFormatB(formatA, logFactory.CreateLogger("mock"));
+
+            // assert
+            Assert.AreEqual("test13", formatA.Name, "Name property should be equal to first part of CSV line");
+        }
     }
 }

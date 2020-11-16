@@ -33,13 +33,15 @@ namespace app.Activities
             if (blobClient.Exists())
             {
                 var response = blobClient.Download();
-                using (var streamReader = new StreamReader(response.Value.Content))
+                using var streamReader = new StreamReader(response.Value.Content);
+                while (!streamReader.EndOfStream)
                 {
-                    while (!streamReader.EndOfStream)
+                    var line = streamReader.ReadLine();
+                    if (string.IsNullOrEmpty(line))
                     {
-                        var line = streamReader.ReadLine();
-                        result.Add(new InputFormat(line));
+                        continue;
                     }
+                    result.Add(new InputFormat(line));
                 }
             } else
             {

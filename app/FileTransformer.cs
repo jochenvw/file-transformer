@@ -21,35 +21,38 @@ namespace app
             // Read BLOB file into lines
             log.LogInformation("Reading BLOB input file into lines - Started ...");
             var lines = await context.CallActivityAsync<List<InputFormat>>("ReadInputFileFromBlob", fileParams);
-            log.LogInformation($"Reading BLOB input file into lines - Done ! Found {lines.Count} lines in the BLOB file");
+            var numberOfLines = lines.Count;
+            log.LogInformation($"Reading BLOB input file into lines - Done ! Found {numberOfLines} lines in the BLOB file");
             
             log.LogInformation("Converting BLOB lines to Format A - Started ...");
-            var ATasks = new List<Task<FormatAInstance>>();
-            foreach (var inputFormat in lines)
+            var aTasks = new Task<FormatAInstance>[numberOfLines];
+            for (var i = 0; i < numberOfLines; i++)
             {
-                log.LogInformation($"Converting line {inputFormat.StringValue} with id {inputFormat.Id} to FormatA");
-                ATasks.Add(context.CallActivityAsync<FormatAInstance>("ConvertCSVToFormatA", inputFormat));
+                var line = lines[i];
+                log.LogInformation($"Converting line {line.StringValue} with id {line.Id} to FormatA");
+                aTasks[i] = context.CallActivityAsync<FormatAInstance>("ConvertCSVToFormatA", line);
             }
-            await Task.WhenAll(ATasks);
+            await Task.WhenAll(aTasks);
             log.LogInformation("Converting BLOB lines to Format A - Done !");
 
             log.LogInformation("Converting Format A to Format B - Started ...");
-
-            var BTasks = new List<Task<FormatBInstance>>();
-            foreach (var aTask in ATasks)
+            var bTasks = new Task<FormatBInstance>[numberOfLines];
+            for (var i = 0; i < numberOfLines; i++)
             {
-                log.LogInformation($"Converting line {aTask.Result.Name} with id {aTask.Result.Id} to FormatB");
-                BTasks.Add(context.CallActivityAsync<FormatBInstance>("ConvertFormatAToFormatB", aTask.Result));
+                var formatAInsstance = aTasks[i].Result;
+                log.LogInformation($"Converting line {formatAInsstance.Name} with id {formatAInsstance.Id} to FormatB");
+                bTasks[i] = context.CallActivityAsync<FormatBInstance>("ConvertFormatAToFormatB", formatAInsstance);
             }
-            await Task.WhenAll(BTasks);
+            await Task.WhenAll(bTasks);
             log.LogInformation("Converting Format A to Format B - Done !");
 
             log.LogInformation("Writing to DB - Started ...");
-            var dbWrites = new List<Task<bool>>();
-            foreach (var bTask in BTasks)
+            var dbWrites = new Task<bool>[numberOfLines];
+            for (var i = 0; i < numberOfLines; i++)
             {
-                log.LogInformation($"Writing Format B to database for id {bTask.Id}");
-                dbWrites.Add(context.CallActivityAsync<bool>("WriteToDatabase", bTask.Result));
+                var formatBInstance = bTasks[i].Result;
+                log.LogInformation($"Writing Format B to database for id {formatBInstance}");
+                dbWrites[i] = context.CallActivityAsync<bool>("WriteToDatabase", formatBInstance);
             }
             await Task.WhenAll(dbWrites);
             log.LogInformation("Writing to DB - Done !");            

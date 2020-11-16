@@ -24,7 +24,8 @@ namespace app.Activities
                 var first = Convert.ToInt32(parts[1]);
                 var second = Convert.ToInt32(parts[2]);
                 var third = Convert.ToInt32(parts[3]);
-                var result = new FormatAInstance(input) {Name = parts[0], First = first, Second = second, Third = third};
+                var result = new FormatAInstance(input)
+                    {Name = parts[0], First = first, Second = second, Third = third};
                 log.LogInformation($"Input converted to FormatA - success - for id {input.Id}");
                 return result;
             }
