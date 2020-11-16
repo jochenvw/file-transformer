@@ -1,93 +1,66 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using app.DTOs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.Services.AppAuthentication;
-using Azure.Storage.Blobs;
-using Azure.Identity;
-using System;
-using System.IO;
 
 namespace app
 {
     public static partial class FileTransformer
     {
         [FunctionName("FileTransformer")]
-        public static async Task<List<string>> RunOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+        public static async Task<string> RunOrchestrator(
+            [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-            // NOTE: Make sure the function app MSI has "Storage Blob Data Reader" (or more) rights
-            //       on the storage container. Right now, the deployment script does *not* do this yet.
-            
-            var outputs = new List<string>();
-            // @TODO:   get params from environment variables (appSettings). But this cannot be done from within the orchestration
-            //          function - because that violates deterministic principles: https://docs.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-code-constraints#using-deterministic-apis
             var fileParams = new BlobFileParameters("test.csv", "https://filetrnsfrmdataindev.blob.core.windows.net/", "inbox");
 
-            var lines = await context.CallActivityAsync<List<string>>("ReadInputFileFromBlob", fileParams);
-            var result = await context.CallActivityAsync<bool>("WriteLinesToDatabase", lines);
-
-            lines.ForEach(line => outputs.Add(line));
-            return outputs;
-        }
-
-        [FunctionName("WriteLinesToDatabase")]
-        public static bool WriteLinesToDatabase([ActivityTrigger] List<string> lines, ILogger log)
-        {
-            // https://docs.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-connect-msi
-            var connectionString = "Server=tcp:filetrnsfrm-dbsrv-dev.database.windows.net,1433;Database=filetrnsfrm-db-dev;";
-            var connection = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
-            connection.AccessToken = (new AzureServiceTokenProvider()).GetAccessTokenAsync("https://database.windows.net/").Result;
-            connection.Open();
-
-            foreach (var line in lines)
+            // Read BLOB file into lines
+            log.LogInformation("Reading BLOB input file into lines - Started ...");
+            var lines = await context.CallActivityAsync<List<InputFormat>>("ReadInputFileFromBlob", fileParams);
+            log.LogInformation($"Reading BLOB input file into lines - Done ! Found {lines.Count} lines in the BLOB file");
+            
+            log.LogInformation("Converting BLOB lines to Format A - Started ...");
+            var ATasks = new List<Task<FormatAInstance>>();
+            foreach (var inputFormat in lines)
             {
-                var sqlstatment = $"INSERT into [log] (Message) VALUES ( '{line}' ) ";
-                // YES - SUPER UNSAFE
-                var cmd = new Microsoft.Data.SqlClient.SqlCommand(sqlstatment, connection);
-                cmd.ExecuteNonQuery();
-                log.LogInformation($"Executed query: '{sqlstatment}'");
+                log.LogInformation($"Converting line {inputFormat.StringValue} with id {inputFormat.Id} to FormatA");
+                ATasks.Add(context.CallActivityAsync<FormatAInstance>("ConvertCSVToFormatA", inputFormat));
             }
-            connection.Close();
-            return true;
-        }
+            await Task.WhenAll(ATasks);
+            log.LogInformation("Converting BLOB lines to Format A - Done !");
 
+            log.LogInformation("Converting Format A to Format B - Started ...");
 
-        [FunctionName("ReadInputFileFromBlob")]
-        public static List<string> ReadInputFileFromBlob([ActivityTrigger] BlobFileParameters fileParameters, ILogger log)
-        {
-            var azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var accessToken = azureServiceTokenProvider.GetAccessTokenAsync("https://storage.azure.com").Result;
-            var containerEndpoint = string.Concat(fileParameters.BlobEndpoint, fileParameters.BlobContainer);
-            var containerClient = new BlobContainerClient(new Uri(containerEndpoint), new ManagedIdentityCredential(accessToken));
-
-            var blobClient = containerClient.GetBlobClient(fileParameters.FileName);
-            var result = new List<string>();
-            if (blobClient.Exists())
+            var BTasks = new List<Task<FormatBInstance>>();
+            foreach (var aTask in ATasks)
             {
-                var response = blobClient.Download();
-                using (var streamReader = new StreamReader(response.Value.Content))
-                {
-                    while (!streamReader.EndOfStream)
-                    {
-                        var line = streamReader.ReadLine();
-                        result.Add(line);
-                    }
-                }
-            } else
-            {
-                var msg = $"Could not find file {fileParameters.FileName} in container {fileParameters.BlobContainer}";
-                log.LogError(msg);
-                throw new Exception(msg);
+                log.LogInformation($"Converting line {aTask.Result.Name} with id {aTask.Result.Id} to FormatB");
+                BTasks.Add(context.CallActivityAsync<FormatBInstance>("ConvertFormatAToFormatB", aTask.Result));
             }
-            log.LogInformation($"BLOB file succesfully read - found {result.Count} lines");
-            return result;
+            await Task.WhenAll(BTasks);
+            log.LogInformation("Converting Format A to Format B - Done !");
+
+            log.LogInformation("Writing to DB - Started ...");
+            var dbWrites = new List<Task<bool>>();
+            foreach (var bTask in BTasks)
+            {
+                log.LogInformation($"Writing Format B to database for id {bTask.Id}");
+                dbWrites.Add(context.CallActivityAsync<bool>("WriteToDatabase", bTask.Result));
+            }
+            await Task.WhenAll(dbWrites);
+            log.LogInformation("Writing to DB - Done !");            
+
+            return "Done!";
         }
 
+
+        /// <summary>
+        /// Trigger function - starts the orchestration
+        /// </summary>
         [FunctionName("FileTransformer_HttpStart")]
         public static async Task<HttpResponseMessage> HttpStart(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestMessage req,
@@ -95,10 +68,8 @@ namespace app
             ILogger log)
         {
             // Function input comes from the request content.
-            string instanceId = await starter.StartNewAsync("FileTransformer", null);
-
+            var instanceId = await starter.StartNewAsync("FileTransformer", null);
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
-
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
     }
