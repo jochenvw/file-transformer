@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using app.DTOs;
 using Microsoft.Azure.Services.AppAuthentication;
@@ -12,10 +13,18 @@ namespace app.Activities
         [FunctionName("WriteToDatabase")]
         public static bool WriteToDatabase([ActivityTrigger] FormatBInstance line, ILogger log)
         {
-            // https://docs.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-connect-msi
-            var connectionString = "Server=tcp:filetrnsfrm-dbsrv-dev.database.windows.net,1433;Database=filetrnsfrm-db-dev;";
-            var connection = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
-            connection.AccessToken = (new AzureServiceTokenProvider()).GetAccessTokenAsync("https://database.windows.net/").Result;
+            var sqlConnectionString = Environment.GetEnvironmentVariable("SQLDBConnectionString");
+            var isRunningLocally = Environment.GetEnvironmentVariable("AzureWebJobsStorage")
+                .Contains("UseDevelopmentStorage=true");
+
+
+            var connection = new Microsoft.Data.SqlClient.SqlConnection(sqlConnectionString);
+            if (!isRunningLocally)
+            {
+                connection.AccessToken = (new AzureServiceTokenProvider())
+                    .GetAccessTokenAsync("https://database.windows.net/").Result;
+            }
+
             connection.Open();
 
             // YES - SUPER UNSAFE
