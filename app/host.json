@@ -1,19 +1,11 @@
 {
-    "version": "2.0",
-    "logging": {
-        "applicationInsights": {
-            "samplingExcludedTypes": "Request",
-            "samplingSettings": {
-                "isEnabled": true
-            }
-        }
-    },
-    {
-        "extensions": {
-          "durableTask": {
-            "maxConcurrentActivityFunctions": 10,
-            "maxConcurrentOrchestratorFunctions": 1
-          }
-        }
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingExcludedTypes": "Request",
+      "samplingSettings": {
+        "isEnabled": true
       }
+    }
+  }
 }
