@@ -22,7 +22,7 @@ namespace app.Activities
             var sqlstatement = $"INSERT into [log] (Message) VALUES ( '{line.ToString()}' ) ";
             var cmd = new Microsoft.Data.SqlClient.SqlCommand(sqlstatement, connection);
             cmd.ExecuteNonQuery();
-            log.LogInformation($"Executed query: '{sqlstatement}'");
+            log.LogInformation($"Executed query: '{sqlstatement}' for id {line.Id}");
             connection.Close();
             return true;
         }
