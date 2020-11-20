@@ -7,5 +7,13 @@
                 "isEnabled": true
             }
         }
-    }
+    },
+    {
+        "extensions": {
+          "durableTask": {
+            "maxConcurrentActivityFunctions": 10,
+            "maxConcurrentOrchestratorFunctions": 1
+          }
+        }
+      }
 }
