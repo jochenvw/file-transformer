@@ -16,34 +16,18 @@ namespace app
         public static async Task<string> RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-            var fileParams = new BlobFileParameters("test.csv", "https://filetrnsfrmdataindev.blob.core.windows.net/", "inbox");
-
             // Read BLOB file into lines
-            var lines = await context.CallActivityAsync<List<InputFormat>>("ReadInputFileFromBlob", fileParams);
+            var lines = await context.CallActivityAsync<List<InputFormat>>("ReadInputFileFromBlob", "notused-but-cannotbenull");
             var numberOfLines = lines.Count;
             
-            var aTasks = new Task<FormatAInstance>[numberOfLines];
-            for (var i = 0; i < numberOfLines; i++)
-            {
-                var line = lines[i];
-                aTasks[i] = context.CallActivityAsync<FormatAInstance>("ConvertCSVToFormatA", line);
-            }
-            await Task.WhenAll(aTasks);
+            var formatAs = lines.Select(line => context.CallActivityAsync<FormatAInstance>("ConvertCSVToFormatA", line));
+            await Task.WhenAll(formatAs);
 
-            var bTasks = new Task<FormatBInstance>[numberOfLines];
-            for (var i = 0; i < numberOfLines; i++)
-            {
-                var formatAInsstance = aTasks[i].Result;
-                bTasks[i] = context.CallActivityAsync<FormatBInstance>("ConvertFormatAToFormatB", formatAInsstance);
-            }
-            await Task.WhenAll(bTasks);
+            var formatBs = formatAs.Select(formatA =>
+                context.CallActivityAsync<FormatBInstance>("ConvertFormatAToFormatB", formatA.Result));
+            await Task.WhenAll(formatBs);
 
-            var dbWrites = new Task<bool>[numberOfLines];
-            for (var i = 0; i < numberOfLines; i++)
-            {
-                var formatBInstance = bTasks[i].Result;
-                dbWrites[i] = context.CallActivityAsync<bool>("WriteToDatabase", formatBInstance);
-            }
+            var dbWrites = formatBs.Select(formatB => context.CallActivityAsync<bool>("WriteToDatabase", formatB.Result));
             await Task.WhenAll(dbWrites);
 
             return "Done!";
