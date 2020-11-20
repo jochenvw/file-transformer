@@ -4,6 +4,7 @@ using System.IO;
 using app.DTOs;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Dynamitey;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -14,21 +15,25 @@ namespace app.Activities
     public static class Input
     {
         [FunctionName("ReadInputFileFromBlob")]
-        public static List<InputFormat> ReadInputFileFromBlob([ActivityTrigger] BlobFileParameters fileParameters, ILogger log)
+        public static List<InputFormat> ReadInputFileFromBlob([ActivityTrigger] string notinuse, ILogger log)
         {
             // NOTE: Make sure the function app MSI has "Storage Blob Data Reader" (or more) rights
             //       on the storage container. Right now, the deployment script does *not* do this yet.
-            // @TODO:   get params from environment variables (appSettings). But this cannot be done from within the orchestration
-            //          function - because that violates deterministic principles:
-            //          https://docs.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-code-constraints#using-deterministic-apis
+            var storageAccountName = Environment.GetEnvironmentVariable("DataInStorageAccount");
+            var storageContainerName = Environment.GetEnvironmentVariable("DataInStorageContainerName");
+            var filename = Environment.GetEnvironmentVariable("DataInStorageFileName");
+            var isRunningLocally = Environment.GetEnvironmentVariable("AzureWebJobsStorage")
+                .Contains("UseDevelopmentStorage=true");
 
 
-            var azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var accessToken = azureServiceTokenProvider.GetAccessTokenAsync("https://storage.azure.com").Result;
-            var containerEndpoint = string.Concat(fileParameters.BlobEndpoint, fileParameters.BlobContainer);
-            var containerClient = new BlobContainerClient(new Uri(containerEndpoint), new ManagedIdentityCredential(accessToken));
+            log.LogInformation($"ReadInputFileFromBlob is going to read from: account location: " +
+                               $"{storageAccountName} container: {storageContainerName} file: {filename}");
 
-            var blobClient = containerClient.GetBlobClient(fileParameters.FileName);
+            var containerClient = isRunningLocally ?
+                new BlobContainerClient(storageAccountName, storageContainerName) :
+                new BlobContainerClient(new Uri($"{storageAccountName}{storageContainerName}"), new DefaultAzureCredential());
+
+            var blobClient = containerClient.GetBlobClient(filename);
             var result = new List<InputFormat>();
             if (blobClient.Exists())
             {
@@ -45,7 +50,7 @@ namespace app.Activities
                 }
             } else
             {
-                var msg = $"Could not find file {fileParameters.FileName} in container {fileParameters.BlobContainer}";
+                var msg = $"Could not find file {filename} in container {storageAccountName}/{storageContainerName}";
                 log.LogError(msg);
                 throw new Exception(msg);
             }
