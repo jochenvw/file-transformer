@@ -10,6 +10,7 @@
   },
   "extensions": {
     "durableTask": {
+      "maxOrchestrationActions": 10000000,
       "extendedSessionsEnabled": true,
       "maxConcurrentActivityFunctions": 5,
       "maxConcurrentOrchestratorFunctions": 1
