@@ -28,7 +28,7 @@ az monitor app-insights component create --resource-group "${prefix}-${project}-
 # Function app - using Linux since we're doing .NET core anyway
 az appservice plan create --resource-group "${prefix}-${project}-${postfix}" --name "${project}-asp-${postfix}" --is-linux --sku P1V2 
 az storage account create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}funcstore${postfix}" --sku Standard_LRS
-`az functionapp create --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --storage-account "${project}funcstore${postfix}" --plan "${project}-asp-${postfix}" --runtime dotnet --app-insights "${project}-appinsights-${postfix}" --functions-version 3 --assign-identity
+az functionapp create --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --storage-account "${project}funcstore${postfix}" --plan "${project}-asp-${postfix}" --runtime dotnet --app-insights "${project}-appinsights-${postfix}" --functions-version 3 --assign-identity
 
 # Configure the Azure function to:
 # 1. Integrate with the virtual network: https://docs.microsoft.com/en-us/azure/azure-functions/functions-networking-options
