@@ -20,11 +20,16 @@ az group create --name "${prefix}-${project}-${postfix}" --location westeurope
 # This will fail, as the subnets will be in use by that time.
 # Reported this UX issue here: https://github.com/Azure/azure-cli/issues/15892 
 # Current workaround: do not deploy VNET if VNET already exists.
-vnetExists=$(az network vnet show --resource-group "${prefix}-${project}-${postfix}" --name "${project}-vnet-${postfix}")
-[ ! -z vnetExists ] && az network vnet create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-vnet-${postfix}" --address-prefixes 10.0.0.0/16
-[ ! -z vnetExists ] && az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name TransformationAppSubnet --address-prefixes 10.0.1.0/24 --delegations Microsoft.Web/serverFarms
-[ ! -z vnetExists ] && az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name DataServicesSubnet --address-prefixes 10.0.2.0/24 --disable-private-endpoint-network-policies true
+vnetInfo=$(az network vnet show --resource-group "${prefix}-${project}-${postfix}" --name "${project}-vnet-${postfix}")
 
+echo $vnetInfo
+[ -z "$vnetInfo" ] && echo "VNET does not yet exist - creating ..." || echo "VNET already exist - skipping creation !"
+[ -z "$vnetInfo" ] && az network vnet create --resource-group "${prefix}-${project}-${postfix}" --location westeurope --name "${project}-vnet-${postfix}" --address-prefixes 10.0.0.0/16
+[ -z "$vnetInfo" ] && az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name TransformationAppSubnet --address-prefixes 10.0.1.0/24 --delegations Microsoft.Web/serverFarms
+[ -z "$vnetInfo" ] && az network vnet subnet create --resource-group "${prefix}-${project}-${postfix}" --vnet-name ${project}-vnet-${postfix} --name DataServicesSubnet --address-prefixes 10.0.2.0/24 --disable-private-endpoint-network-policies true
+# Bash wizardry: https://www.cyberciti.biz/faq/unix-linux-bash-script-check-if-variable-is-empty/ 
+
+exit 1
 # Instrumentation - Log Analytics and App Insights
 # NOTE the relative new feature to keep Log Analytics and App Insights logs in the same workspace
 az monitor log-analytics workspace create --resource-group "${prefix}-${project}-${postfix}" --workspace-name "${project}-logs-${postfix}"
