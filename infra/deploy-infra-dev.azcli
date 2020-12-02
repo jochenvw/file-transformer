@@ -91,6 +91,8 @@ az functionapp config appsettings set --resource-group "${prefix}-${project}-${p
 az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "DataInStorageContainerName=${inboxcontainer}"
 az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "DataInStorageFileName=test.csv"
 az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "SQLDBConnectionString=Server=tcp:${project}-dbsrv-${postfix}.database.windows.net,1433;Database=${project}-db-${postfix};"
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "WEBSITE_RUN_FROM_PACKAGE=1"
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "NumberOfLinesInBatch=100"
 
 # Send all logs and metrics to log analytics for all resources where possible
 az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-func-${postfix}" --resource-type Microsoft.Web/sites --logs '[{"category":"FunctionAppLogs","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"
