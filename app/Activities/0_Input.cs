@@ -4,8 +4,6 @@ using System.IO;
 using app.DTOs;
 using Azure.Identity;
 using Azure.Storage.Blobs;
-using Dynamitey;
-using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -15,13 +13,13 @@ namespace app.Activities
     public static class Input
     {
         [FunctionName("ReadInputFileFromBlob")]
-        public static List<InputFormat> ReadInputFileFromBlob([ActivityTrigger] string notinuse, ILogger log)
+        public static InputFormat[] ReadInputFileFromBlob([ActivityTrigger] string unused, ILogger log)
         {
             // NOTE: Make sure the function app MSI has "Storage Blob Data Reader" (or more) rights
             //       on the storage container. Right now, the deployment script does *not* do this yet.
+            var filename = Environment.GetEnvironmentVariable("DataInStorageFileName");
             var storageAccountName = Environment.GetEnvironmentVariable("DataInStorageAccount");
             var storageContainerName = Environment.GetEnvironmentVariable("DataInStorageContainerName");
-            var filename = Environment.GetEnvironmentVariable("DataInStorageFileName");
             var isRunningLocally = Environment.GetEnvironmentVariable("AzureWebJobsStorage")
                 .Contains("UseDevelopmentStorage=true");
 
@@ -55,7 +53,8 @@ namespace app.Activities
                 throw new Exception(msg);
             }
             log.LogInformation($"BLOB file successfully read - found {result.Count} lines");
-            return result;
+            log.LogMetric("LinesRead", result.Count);
+            return result.ToArray();
         }
     }
 }

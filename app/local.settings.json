@@ -6,6 +6,7 @@
     "DataInStorageAccount": "UseDevelopmentStorage=true",
     "DataInStorageContainerName": "inbox",
     "DataInStorageFileName": "test.csv",
-    "SQLDBConnectionString": "Data Source=(localDB)\\MSSQLLocalDB;Initial Catalog=Logs;Integrated Security=True"
+    "SQLDBConnectionString": "Data Source=(localDB)\\MSSQLLocalDB;Initial Catalog=Logs;Integrated Security=True",
+    "NumberOfLinesInBatch": 2
   }
 }
