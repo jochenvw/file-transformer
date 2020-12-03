@@ -13,7 +13,8 @@
       "maxOrchestrationActions": 10000000,
       "extendedSessionsEnabled": true,
       "maxConcurrentActivityFunctions": 10,
-      "maxConcurrentOrchestratorFunctions": 1
+      "maxConcurrentOrchestratorFunctions": 1,
+      "useLegacyPartitionManagement": false
     }
   }
 }
