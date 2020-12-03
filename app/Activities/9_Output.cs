@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using app.DTOs;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.WebJobs;
@@ -14,6 +15,7 @@ namespace app.Activities
         public static bool WriteToDatabase([ActivityTrigger] FormatBInstance[] line, ILogger log)
         {
             var sqlConnectionString = Environment.GetEnvironmentVariable("SQLDBConnectionString");
+            var sqlCommandTimeout = Convert.ToInt32(Environment.GetEnvironmentVariable("SQLDBCommandTimeout"));
             var isRunningLocally = Environment.GetEnvironmentVariable("AzureWebJobsStorage")
                 .Contains("UseDevelopmentStorage=true");
 
@@ -32,13 +34,25 @@ namespace app.Activities
             {
                 sqlstatement += $"INSERT into [log] (Message) VALUES ( '{line[i]}' ); ";
             }
-            
-            var cmd = new SqlCommand(sqlstatement, connection);
-            cmd.ExecuteNonQuery();
-            connection.Close();
-            log.LogInformation($"Written {line.Length} FormatB lines to database");
-            log.LogMetric("DBWrites", line.Length);
-            return true;
+
+            try
+            {
+                var start = Stopwatch.StartNew();
+                var cmd = new SqlCommand(sqlstatement, connection);
+                cmd.CommandTimeout = sqlCommandTimeout;
+                cmd.ExecuteNonQuery();
+                connection.Close();
+                log.LogInformation($"Written {line.Length} FormatB lines to database - timeout set at {sqlCommandTimeout} seconds - needed {start.ElapsedMilliseconds} ms for execution");
+                log.LogMetric("DBWrites", line.Length);
+                log.LogMetric("DBWriteTime", start.ElapsedMilliseconds);
+                return true;
+            }
+            catch (Exception e)
+            {
+                log.LogError($"Error writing to database !: {e.Message} - timeout set at {sqlCommandTimeout}", e);
+                log.LogMetric("DBWriteFailures", line.Length);
+                throw;
+            }
         }
     }
 }
