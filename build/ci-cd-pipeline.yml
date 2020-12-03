@@ -28,13 +28,13 @@ stages:
       inputs:
         command: 'build'
         projects: |
-          $(System.DefaultWorkingDirectory)/app/*.csproj
-        arguments: --output $(System.DefaultWorkingDirectory)/app/publish_output --configuration Release
+          $(System.DefaultWorkingDirectory)/app/TransformationFunctions/*.csproj
+        arguments: --output $(System.DefaultWorkingDirectory)/app/TransformationFunctions/publish_output --configuration Release
 
     - task: ArchiveFiles@2
       displayName: 'Zip up function build output - that can be used for ZIP deployment'
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/app/publish_output'
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/app/TransformationFunctions/publish_output'
         includeRootFolder: false
         archiveType: zip
         archiveFile: $(Build.ArtifactStagingDirectory)/app/file-transform-$(Build.BuildId).zip
