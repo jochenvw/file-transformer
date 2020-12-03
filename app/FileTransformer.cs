@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using app.DTOs;
@@ -6,40 +6,39 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace app
 {
-    public static partial class FileTransformer
+    public partial class FileTransformer
     {
         [FunctionName("FileTransformer")]
         public static async Task<string> RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             // Read BLOB file into lines
-            var lines = await context.CallActivityAsync<List<InputFormat>>("ReadInputFileFromBlob", "unused-butshouldnotbenull");
-            var numberOfLines = lines.Count;
+            var lines = await context.CallActivityAsync<InputFormat[]>("ReadInputFileFromBlob", "unused-but-cannotbenull");
+            var batches = await context.CallActivityAsync<InputFormat[][]>("GroupLinesInBatches", lines);
+            var numberOfBatches = batches.Length;
 
-            var aTasks = new Task<FormatAInstance>[numberOfLines];
-            for (var i = 0; i < numberOfLines; i++)
+            var aTasks = new Task<FormatAInstance[]>[numberOfBatches];
+            for (var i = 0; i < numberOfBatches; i++)
             {
-                var line = lines[i];
-                aTasks[i] = context.CallActivityAsync<FormatAInstance>("ConvertCSVToFormatA", line);
+                aTasks[i] = context.CallActivityAsync<FormatAInstance[]>("ConvertCSVToFormatA", batches[i]);
             }
             await Task.WhenAll(aTasks);
 
-            var bTasks = new Task<FormatBInstance>[numberOfLines];
-            for (var i = 0; i < numberOfLines; i++)
+            var bTasks = new Task<FormatBInstance[]>[numberOfBatches];
+            for (var i = 0; i < numberOfBatches; i++)
             {
-                var formatAInsstance = aTasks[i].Result;
-                bTasks[i] = context.CallActivityAsync<FormatBInstance>("ConvertFormatAToFormatB", formatAInsstance);
+                bTasks[i] = context.CallActivityAsync<FormatBInstance[]>("ConvertFormatAToFormatB", aTasks[i].Result);
             }
             await Task.WhenAll(bTasks);
 
-            var dbWrites = new Task<bool>[numberOfLines];
-            for (var i = 0; i < numberOfLines; i++)
+            var dbWrites = new Task<bool>[numberOfBatches];
+            for (var i = 0; i < numberOfBatches; i++)
             {
-                var formatBInstance = bTasks[i].Result;
-                dbWrites[i] = context.CallActivityAsync<bool>("WriteToDatabase", formatBInstance);
+                dbWrites[i] = context.CallActivityAsync<bool>("WriteToDatabase", bTasks[i].Result);
             }
             await Task.WhenAll(dbWrites);
 
@@ -57,6 +56,7 @@ namespace app
             ILogger log)
         {
             // Function input comes from the request content.
+            var content = req.Content;
             var instanceId = await starter.StartNewAsync("FileTransformer", null);
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
             return starter.CreateCheckStatusResponse(req, instanceId);
