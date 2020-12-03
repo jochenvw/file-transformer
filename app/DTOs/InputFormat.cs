@@ -5,16 +5,16 @@ namespace app.DTOs
     public class InputFormat
     {
         public Guid Id { get; set; }
-        public string StringValue { get; set; }
+        public string S { get; set; }
 
         public InputFormat()
         {
         }
 
-        public InputFormat(string stringValue)
+        public InputFormat(string s)
         {
             this.Id = Guid.NewGuid();
-            this.StringValue = stringValue;
+            this.S = s;
         }
     }
 }

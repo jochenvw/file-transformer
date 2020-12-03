@@ -40,7 +40,7 @@ namespace app.Activities
             for (var i = 0; i < input.Length; i++)
             {
                 var line = input[i];
-                var parts = line.StringValue.Split(";");
+                var parts = line.S.Split(";");
                 if (parts.Length != 4)
                 {
                     throw new FormatException(
@@ -53,7 +53,7 @@ namespace app.Activities
                     var second = Convert.ToInt32(parts[2]);
                     var third = Convert.ToInt32(parts[3]);
                     result[i] = new FormatAInstance(line)
-                        {Name = parts[0], First = first, Second = second, Third = third};
+                        {N = parts[0], F = first, S = second, T = third};
                 }
                 catch (Exception e)
                 {

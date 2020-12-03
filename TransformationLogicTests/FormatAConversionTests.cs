@@ -21,10 +21,10 @@ namespace TransformationLogicTests
             var actual = conversion[0];
 
             // assert
-            Assert.AreEqual("test13", actual.Name, "Name property should be equal to first part of CSV line");
-            Assert.AreEqual(4803, actual.First, "'First' property should equal 2nd part of CSV line");
-            Assert.AreEqual(1835, actual.Second, "'Second' property should equal 3rd part of CSV line");
-            Assert.AreEqual(1558, actual.Third, "'Third' property should equal 4th part of CSV line");
+            Assert.AreEqual("test13", actual.N, "Name property should be equal to first part of CSV line");
+            Assert.AreEqual(4803, actual.F, "'First' property should equal 2nd part of CSV line");
+            Assert.AreEqual(1835, actual.S, "'Second' property should equal 3rd part of CSV line");
+            Assert.AreEqual(1558, actual.T, "'Third' property should equal 4th part of CSV line");
         }
 
         [TestMethod]
@@ -49,7 +49,7 @@ namespace TransformationLogicTests
             var formatB = Transformations.ConvertFormatAToFormatB(formatA, logFactory.CreateLogger("mock"));
 
             // assert
-            Assert.AreEqual("test13", formatA[0].Name, "Name property should be equal to first part of CSV line");
+            Assert.AreEqual("test13", formatA[0].N, "Name property should be equal to first part of CSV line");
         }
     }
 }
