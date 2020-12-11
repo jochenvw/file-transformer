@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace app.DTOs
+namespace TransformationFunctions.DTOs
 {
     public class FormatAInstance
     {

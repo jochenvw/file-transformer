@@ -1,7 +1,6 @@
 ﻿using System;
-using Dynamitey;
 
-namespace app.DTOs
+namespace TransformationFunctions.DTOs
 {
     public class FormatBInstance
     {

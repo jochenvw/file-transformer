@@ -1,8 +1,8 @@
 using System;
-using app.Activities;
-using app.DTOs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using TransformationFunctions.Activities;
+using TransformationFunctions.DTOs;
 
 namespace TransformationLogicTests
 {

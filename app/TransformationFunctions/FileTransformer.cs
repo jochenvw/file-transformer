@@ -1,14 +1,12 @@
-using System;
 using System.Net.Http;
 using System.Threading.Tasks;
-using app.DTOs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
+using TransformationFunctions.DTOs;
 
-namespace app
+namespace TansformationFunctions
 {
     public partial class FileTransformer
     {
@@ -39,6 +37,12 @@ namespace app
             for (var i = 0; i < numberOfBatches; i++)
             {
                 dbWrites[i] = context.CallActivityAsync<bool>("WriteToDatabase", bTasks[i].Result);
+            }
+            await Task.WhenAll(dbWrites);
+
+            for (var i = 0; i < numberOfBatches; i++)
+            {
+                dbWrites[i] = context.CallActivityAsync<bool>("WriteToDatabaseUsingEF", bTasks[i].Result);
             }
             await Task.WhenAll(dbWrites);
 

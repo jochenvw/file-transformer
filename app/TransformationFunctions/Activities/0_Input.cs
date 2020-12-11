@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using app.DTOs;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using TransformationFunctions.DTOs;
 
-namespace app.Activities
+namespace TransformationFunctions.Activities
 {
     public static class Input
     {

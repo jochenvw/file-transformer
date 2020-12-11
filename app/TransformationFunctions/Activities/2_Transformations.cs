@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Linq;
-using app.DTOs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using TransformationFunctions.DTOs;
 
-namespace app.Activities
+namespace TransformationFunctions.Activities
 {
     public static class Transformations
     {
