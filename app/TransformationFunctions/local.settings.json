@@ -8,6 +8,7 @@
     "DataInStorageFileName": "test.csv",
     "SQLDBCommandTimeout": 30,
     "SQLDBConnectionString": "Data Source=(localDB)\\MSSQLLocalDB;Initial Catalog=Logs;Integrated Security=True",
-    "NumberOfLinesInBatch": 2
+    "NumberOfLinesInBatch": 2,
+    "APIEndpoint" : "https://f461dda3669938d8ace1a78ebe8bf94d.m.pipedream.net"
   }
 }

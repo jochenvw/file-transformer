@@ -26,6 +26,13 @@ namespace TansformationFunctions
             }
             await Task.WhenAll(aTasks);
 
+            var apiCalls = new Task<FormatAInstance[]>[numberOfBatches];
+            for (var i = 0; i < numberOfBatches; i++)
+            {
+                apiCalls[i] = context.CallActivityAsync<FormatAInstance[]>("SendToApi", aTasks[i].Result);
+            }
+            await Task.WhenAll(apiCalls);
+
             var bTasks = new Task<FormatBInstance[]>[numberOfBatches];
             for (var i = 0; i < numberOfBatches; i++)
             {

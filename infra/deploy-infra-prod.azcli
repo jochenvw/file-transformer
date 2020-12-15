@@ -91,7 +91,14 @@ az functionapp config appsettings set --resource-group "${prefix}-${project}-${p
 az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "DataInStorageContainerName=${inboxcontainer}"
 az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "DataInStorageFileName=test.csv"
 az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "SQLDBConnectionString=Server=tcp:${project}-dbsrv-${postfix}.database.windows.net,1433;Database=${project}-db-${postfix};"
-az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "NumberOfLinesInBatch=100"
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "WEBSITE_RUN_FROM_PACKAGE=1"
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "APIEndpoint=https://f461dda3669938d8ace1a78ebe8bf94d.m.pipedream.net"
+# NumberOfLinesInBatch findings: 1K works fine - 10K seemed a bit too much, resulting in SQL timeouts. Therefore
+# Therefore I've made the SQL DB Command timeout configurable - and now at 120 seconds ( default @ 30 ). Problem is - if you 
+# have chunks that exceed the timeout, the function cannot recover from this. Because retries will also exceeed etc.
+# I don't want to be pushing that limit and would like to stay within 15-30 seconds SQL execution time. So now checking with 2.5K batch size.
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "NumberOfLinesInBatch=2500"
+az functionapp config appsettings set --resource-group "${prefix}-${project}-${postfix}" --name "${project}-func-${postfix}" --settings "SQLDBCommandTimeout=120"
 
 # Send all logs and metrics to log analytics for all resources where possible
 az monitor diagnostic-settings create --resource-group "${prefix}-${project}-${postfix}" --name SendToLogAnalytics --resource "${project}-func-${postfix}" --resource-type Microsoft.Web/sites --logs '[{"category":"FunctionAppLogs","Enabled":true}]' --metrics '[{"category":"AllMetrics","Enabled":true}]' --workspace "${project}-logs-${postfix}"

@@ -18,5 +18,10 @@ namespace TransformationFunctions.DTOs
         {
             this.Id = input.Id;
         }
+
+        public override string ToString()
+        {
+            return $"FormatAInstance - Id {this.Id} - N {this.N} F {this.F} S {this.S} T {this.T}";
+        }
     }
 }
